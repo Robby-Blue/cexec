@@ -1,0 +1,9 @@
+services:
+  cexec-client:
+    build: .
+    image: cexec-client
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/cexec-client:/app/workspace
+    env_file:
+      - .env
