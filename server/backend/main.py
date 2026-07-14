@@ -1,4 +1,6 @@
-from fastapi import FastAPI
+from typing import List
+
+from fastapi import FastAPI, UploadFile, File
 from fastapi.staticfiles import StaticFiles
 from fastapi import Body
 import uvicorn
@@ -7,9 +9,9 @@ import db_helper as db
 db.setup()
 
 import tasks
+import webhooks
 
 app = FastAPI()
-
 
 @app.get("/api")
 async def root():
@@ -28,7 +30,7 @@ async def get_next_task(
         return 404
     
     task = found_tasks[0]
-    tasks.mark_started(task["id"])
+    tasks.start_run(task["id"])
     
     return task
 
@@ -39,11 +41,15 @@ async def create_task(
 ):
     return tasks.create_task(script, path)
 
-@app.post("/api/tasks/mark_completed")
-async def mark_completed(
-    id: str = Body(..., embed=True),
+@app.post("/api/runs/complete")
+async def complete_run(
+    id: str = Body(...),
+    exit_code: int = Body(...),
+    output: dict = Body(...),
+    # files: List[UploadFile] = File(...),
+    # log: UploadFile = File(...),
 ):
-    return tasks.mark_completed(id)
+    return tasks.complete_run(id, exit_code, output)
 
 app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
 

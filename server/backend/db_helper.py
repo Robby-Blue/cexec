@@ -9,9 +9,18 @@ def setup():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             script TEXT NOT NULL,
             workspace_path TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            started_at TIMESTAMP DEFAULT NULL,
-            completed_at TIMESTAMP DEFAULT NULL
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    """)
+    
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS runs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            task_id INTEGER UNIQUE,
+            started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            completed_at TIMESTAMP DEFAULT NULL,
+            exit_code INTEGER DEFAULT NULL,
+            FOREIGN KEY(task_id) REFERENCES tasks(id)
         );
     """)
 
