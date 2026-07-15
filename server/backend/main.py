@@ -4,6 +4,7 @@ from fastapi import FastAPI, UploadFile, File
 from fastapi.staticfiles import StaticFiles
 from fastapi import Body
 import uvicorn
+import json
 
 import db_helper as db
 db.setup()
@@ -43,13 +44,11 @@ async def create_task(
 
 @app.post("/api/runs/complete")
 async def complete_run(
-    id: str = Body(...),
-    exit_code: int = Body(...),
-    output: dict = Body(...),
-    # files: List[UploadFile] = File(...),
-    # log: UploadFile = File(...),
+    data: UploadFile = File(...),
+    files: List[UploadFile] = File(...),
 ):
-    return tasks.complete_run(id, exit_code, output)
+    data = json.loads(data.file.read())
+    return tasks.complete_run(data, files)
 
 app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
 

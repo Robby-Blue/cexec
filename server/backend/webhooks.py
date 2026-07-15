@@ -2,7 +2,7 @@ import datetime
 import requests
 import os
 
-def send_webhook(embed):    
+def send_webhook(url, embed):
     data = {
         "username": "cexec",
         "embeds": [
@@ -10,9 +10,10 @@ def send_webhook(embed):
         ]
     }
     
-    url = os.getenv("DISCORD_WEBHOOK_URL")
-    
     requests.post(url, json=data)
+    
+def send_file(url, data):
+    requests.post(url, files={"file": data})
     
 def get_run_embed(run):
     name = run["script"]
