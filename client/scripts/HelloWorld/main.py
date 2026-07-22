@@ -22,5 +22,10 @@ with open("/app/output/output.json", "w") as f:
                     ],
                 }
             ]
-        }
+        },
+        "new_tasks": [
+            {
+                "script": "ByeWorld"
+            }
+        ]
     }, f)

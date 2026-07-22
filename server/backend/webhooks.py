@@ -3,6 +3,9 @@ import requests
 import os
 
 def send_webhook(url, embed):
+    if url == "":
+        return
+    
     data = {
         "username": "cexec",
         "embeds": [
@@ -13,6 +16,9 @@ def send_webhook(url, embed):
     requests.post(url, json=data)
     
 def send_file(url, data):
+    if url == "":
+        return
+
     requests.post(url, files={"file": data})
     
 def get_run_embed(run):

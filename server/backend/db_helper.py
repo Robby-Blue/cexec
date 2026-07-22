@@ -8,14 +8,12 @@ def setup():
         CREATE TABLE IF NOT EXISTS tasks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             script TEXT NOT NULL,
-            workspace_path TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
     """)
     
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS runs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
             task_id INTEGER UNIQUE,
             started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             completed_at TIMESTAMP DEFAULT NULL,
@@ -41,3 +39,6 @@ def query(query, data=[]):
         rows.append(row)
         
     return rows
+
+def last_row_id():
+    return cursor.lastrowid

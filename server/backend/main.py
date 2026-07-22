@@ -10,13 +10,8 @@ import db_helper as db
 db.setup()
 
 import tasks
-import webhooks
 
 app = FastAPI()
-
-@app.get("/api")
-async def root():
-    return {"message": "Hello World"}
 
 @app.get("/api/tasks")
 async def get_tasks():
@@ -38,9 +33,9 @@ async def get_next_task(
 @app.post("/api/tasks/create")
 async def create_task(
     script: str = Body(...),
-    path: str = Body(...)
+    data: dict = Body(...)
 ):
-    return tasks.create_task(script, path)
+    return tasks.create_task(script, data)
 
 @app.post("/api/runs/complete")
 async def complete_run(

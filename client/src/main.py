@@ -1,8 +1,8 @@
 import task_runner
+import paths
 import os
 import requests
 
-    
 def main(): 
     while True:
         task = get_next_task()
@@ -11,13 +11,10 @@ def main():
             break
         
         task_runner.run_task(task)
-        
-        import time
-        time.sleep(5)
 
 def get_next_task():
     api_url = os.getenv("SERVER_API_URL")
-    allowed_scripts = os.listdir("/app/scripts")
+    allowed_scripts = os.listdir(paths.RUNNER_SCRIPTS)
         
     return requests.post(f"{api_url}/tasks/next", json={
         "allowed_scripts": allowed_scripts

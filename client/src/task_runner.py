@@ -1,4 +1,5 @@
 import docker_helper as docker
+import paths
 import requests
 import json
 import os
@@ -11,28 +12,37 @@ def run_task(task):
     make_env()
     
     exit_code, log = docker.run_script_container(script)
-        
-    print(complete_run(id, exit_code, log))
+
+    complete_run(id, exit_code, log)
 
 def complete_run(id, exit_code, log):
-    with open("/app/workspace/output/output.json", "r") as f:
-        output_data = json.load(f)
+    if os.path.exists(paths.RUNNER_OUTPUT_JSON):
+        with open(paths.RUNNER_OUTPUT_JSON, "r") as f:
+            output_data = json.load(f)
+    else:
+        output_data = {}
     
     api_url = os.getenv("SERVER_API_URL")
 
-    run_files_list, run_files = find_files("run", "/app/workspace/output/run")
-    global_files_list, global_files = find_files("global", "/app/workspace/output/global")
+    run_files_list, run_files = find_files("run", paths.RUNNER_OUTPUT_RUN)
+    global_files_list, global_files = find_files("global", paths.RUNNER_OUTPUT_GLOBAL)
 
     files_list = [*run_files_list, *global_files_list]
     files = [*run_files, *global_files]
 
+    files_list.append({
+        "type": "run",
+        "path": "log",
+        "name": "log"
+    })
+    
     data = {
         "id": str(id),
         "exit_code": exit_code,
         "output": output_data,
         "files_list": files_list
     }
-    
+
     files.append(("data", ("data", json.dumps(data), "application/json")))
     files.append(("files", ("log", log, "text/plain")))
 
@@ -70,15 +80,15 @@ def process_file(type, path):
     
     with open(path, "rb") as f:
         data = f.read()
-    file =("files", (path_md5, data))
+    file = ("files", (path_md5, data))
     
     return entry, file
 
 def make_env():
-    del_dir("/app/workspace/output")
-    os.makedirs("/app/workspace/output", exist_ok=True)
-    os.makedirs("/app/workspace/output/run", exist_ok=True)
-    os.makedirs("/app/workspace/output/global", exist_ok=True)
+    del_dir(paths.RUNNER_OUTPUT)
+    os.makedirs(paths.RUNNER_OUTPUT, exist_ok=True)
+    os.makedirs(paths.RUNNER_OUTPUT_RUN, exist_ok=True)
+    os.makedirs(paths.RUNNER_OUTPUT_GLOBAL, exist_ok=True)
 
 def del_dir(path):
     for file in os.listdir(path):
