@@ -33,8 +33,13 @@ def get_next_task(allowed_scripts):
         WHERE r.started_at IS NULL AND
         script IN ({interpolations});
         """, [*allowed_scripts])
-        
-    return rows
+
+    if len(rows) == 0:
+        return None
+
+    row = rows[0]
+
+    return row
 
 def start_run(task_id):
     db.exec("""

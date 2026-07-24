@@ -1,7 +1,7 @@
 # plans
 - [x] basic execution
 - [ ] dependencies
-- [ ] file download
+- [x] file download
 - [ ] priorities
 - [ ] scheduled tasks
 - [ ] basic auth

@@ -25,7 +25,10 @@ with open("/app/output/output.json", "w") as f:
         },
         "new_tasks": [
             {
-                "script": "ByeWorld"
+                "script": "ByeWorld",
+                "data": {
+                    "files": ["global/hello.txt"]
+                }
             }
         ]
     }, f)
