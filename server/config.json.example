@@ -1,0 +1,12 @@
+{
+    "scheduled_runs": [
+        {
+            "script": "HelloWorld",
+            "tag": "auto_HelloWorld",
+            "schedule": {
+                "type": "daily",
+                "hour": 12
+            }
+        }
+    ]
+}

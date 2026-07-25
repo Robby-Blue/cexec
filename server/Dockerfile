@@ -12,4 +12,4 @@ RUN uv sync
 
 COPY . .
 
-CMD [ "uv", "run", "backend/main.py" ]
+CMD [ "uv", "run", "python", "-u", "backend/main.py" ]

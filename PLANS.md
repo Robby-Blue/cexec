@@ -3,7 +3,7 @@
 - [ ] dependencies
 - [x] file download
 - [ ] priorities
-- [ ] scheduled tasks
+- [x] scheduled tasks
 - [ ] basic auth
 - [ ] a web ui
 

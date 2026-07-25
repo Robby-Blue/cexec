@@ -1,4 +1,5 @@
 import db_helper as db
+import scheduled_tasks
 import webhooks
 import paths
 
@@ -10,11 +11,11 @@ def get_tasks():
     
     return rows
 
-def create_task(script, data):
+def create_task(script, data, tag=None):
     db.exec("""
-        INSERT INTO tasks (script)
-        VALUES (?);
-        """, [script])
+        INSERT INTO tasks (script, tag)
+        VALUES (?, ?);
+        """, [script, tag])
     
     id = db.last_row_id()
     data_file_name = f"{id}.json" 
@@ -24,6 +25,8 @@ def create_task(script, data):
         json.dump(data, f)
 
 def get_next_task(allowed_scripts):
+    scheduled_tasks.create_scheduled_tasks()
+    
     interpolations = "?," * len(allowed_scripts)
     interpolations = interpolations[:-1]
     
