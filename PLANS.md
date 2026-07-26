@@ -2,7 +2,7 @@
 - [x] basic execution
 - [ ] dependencies
 - [x] file download
-- [ ] priorities
+- [x] priorities
 - [x] scheduled tasks
 - [ ] basic auth
 - [ ] a web ui

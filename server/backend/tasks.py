@@ -2,6 +2,7 @@ import db_helper as db
 import scheduled_tasks
 import webhooks
 import paths
+import config
 
 import os
 import json
@@ -11,11 +12,16 @@ def get_tasks():
     
     return rows
 
-def create_task(script, data, tag=None):
+def create_task(script, data, priority_str=None, tag=None):
+    if priority_str is None:
+        priority = 0
+    else:
+        priority = config.priority_from_str(priority_str)
+
     db.exec("""
-        INSERT INTO tasks (script, tag)
-        VALUES (?, ?);
-        """, [script, tag])
+        INSERT INTO tasks (script, priority, tag)
+        VALUES (?, ?, ?);
+        """, [script, priority, tag])
     
     id = db.last_row_id()
     data_file_name = f"{id}.json" 
@@ -34,7 +40,8 @@ def get_next_task(allowed_scripts):
         SELECT t.* FROM tasks t
         LEFT JOIN runs r ON r.task_id = t.id
         WHERE r.started_at IS NULL AND
-        script IN ({interpolations});
+        script IN ({interpolations})
+        ORDER BY priority DESC;
         """, [*allowed_scripts])
 
     if len(rows) == 0:
@@ -116,10 +123,16 @@ def save_files(task_id, files_list, files):
             f.write(file.file.read())
 
 def handle_new_tasks(run_data, new_tasks_data):
+    default_priority = run_data["priority"]
+    default_priority_str = config.get_priority_str(default_priority)
+    
     for new_task_data in new_tasks_data:
         script = new_task_data["script"]
         data = new_task_data.get("data", {})
-        create_task(script, data)
+        priority_str = new_task_data.get("priority", default_priority_str)
+        tag = new_task_data.get("tag", None)
+
+        create_task(script, data, priority_str, tag)
             
 def get_file_by_name(name, files):
     for file in files:

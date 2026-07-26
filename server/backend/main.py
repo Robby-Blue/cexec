@@ -41,9 +41,10 @@ async def get_next_task(
 @app.post("/api/tasks/create")
 async def create_task(
     script: str = Body(...),
+    priority: str = Body(...),
     data: dict = Body(...)
 ):
-    return tasks.create_task(script, data)
+    return tasks.create_task(script, data, priority)
 
 @app.post("/api/runs/complete")
 async def complete_run(

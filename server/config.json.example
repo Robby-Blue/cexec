@@ -8,5 +8,9 @@
                 "hour": 12
             }
         }
+    ],
+    "priorities": [
+        "low",
+        "high"
     ]
 }

@@ -1,15 +1,12 @@
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
-import json
+import config
 
 import db_helper as db
 import tasks
 
-with open("config.json") as f:
-    scheduled_tasks = json.load(f)["scheduled_tasks"]
-
 def create_scheduled_tasks():
-    for scheduled_task in scheduled_tasks:
+    for scheduled_task in config.scheduled_tasks:
         create_scheduled_task(scheduled_task)
 
 def create_scheduled_task(scheduled_task):
@@ -18,7 +15,8 @@ def create_scheduled_task(scheduled_task):
     tasks.create_task(
         scheduled_task["script"],
         scheduled_task.get("data", {}),
-        scheduled_task["tag"]
+        priority_str=scheduled_task.get("priority", {}),
+        tag=scheduled_task["tag"]
     )
     
 def should_create_scheduled_task(scheduled_task):
