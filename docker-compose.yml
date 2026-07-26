@@ -1,0 +1,20 @@
+services:
+  cexec-server:
+    build:
+      dockerfile: server/Dockerfile
+    image: cexec-server
+    ports:
+      - "3000:3000"
+    volumes:
+      - /var/lib/cexec-server:/app/workspace
+    env_file:
+      - server/.env
+  cexec-client:
+    build:
+      dockerfile: client/Dockerfile
+    image: cexec-client
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/cexec-client:/app/workspace
+    env_file:
+      - client/.env

@@ -4,12 +4,14 @@ WORKDIR /app
 
 RUN apk add uv
 
-COPY pyproject.toml .
-COPY uv.lock .
-COPY .python-version .
+COPY server/pyproject.toml .
+COPY server/uv.lock .
+COPY server/.python-version .
 
 RUN uv sync
 
-COPY . .
+COPY version.json .
+
+COPY server .
 
 CMD [ "uv", "run", "python", "-u", "backend/main.py" ]

@@ -17,6 +17,15 @@ import tasks
 
 app = FastAPI()
 
+with open("version.json") as f:
+    version_id = json.load(f)["version_id"]
+
+@app.get("/api/version")
+async def get_version():
+    return {
+        "version_id": version_id
+    }
+
 @app.get("/api/tasks")
 async def get_tasks():
     return tasks.get_tasks()
