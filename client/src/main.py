@@ -3,6 +3,7 @@ import paths
 import os
 import api
 import json
+import time
 
 def main():
     with open("version.json") as f:
@@ -13,7 +14,8 @@ def main():
         task = get_next_task()
         
         if not task["found"]:
-            break
+            time.sleep(60 * 60)
+            continue
         
         task_runner.run_task(task)
 
