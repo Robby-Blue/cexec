@@ -1,7 +1,6 @@
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 import config
-
 import db_helper as db
 import tasks
 

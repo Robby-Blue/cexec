@@ -1,12 +1,15 @@
 from typing import List
 
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Body, HTTPException, status, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from fastapi import Body
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import uvicorn
+import hmac
 import json
 import os
+
+AUTH_KEY = os.environ["AUTH_KEY"]
 
 import paths
 
@@ -20,20 +23,28 @@ app = FastAPI()
 with open("version.json") as f:
     version_id = json.load(f)["version_id"]
 
+bearer_scheme = HTTPBearer(auto_error=False)
+def verify_api_key(creds: HTTPAuthorizationCredentials | None = Depends(bearer_scheme)):
+    if AUTH_KEY == "":
+        return None
+    if creds and hmac.compare_digest(creds.credentials, AUTH_KEY):
+        return None
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="wrong auth key :(")
+
 @app.get("/api/version")
 async def get_version():
     return {
         "version_id": version_id
     }
 
-@app.get("/api/tasks")
+@app.get("/api/tasks", dependencies=[Depends(verify_api_key)])
 async def get_tasks():
     return tasks.get_tasks()
 
-@app.post("/api/tasks/next")
+@app.post("/api/tasks/next", dependencies=[Depends(verify_api_key)])
 async def get_next_task(
     allowed_scripts: list[str] = Body(..., embed=True)
-):
+):    
     found_task = tasks.get_next_task(allowed_scripts)
     if not found_task:
         return {"found": False}
@@ -47,7 +58,7 @@ async def get_next_task(
     
     return found_task
 
-@app.post("/api/tasks/create")
+@app.post("/api/tasks/create", dependencies=[Depends(verify_api_key)])
 async def create_task(
     script: str = Body(...),
     priority: str = Body(...),
@@ -55,7 +66,7 @@ async def create_task(
 ):
     return tasks.create_task(script, data, priority)
 
-@app.post("/api/runs/complete")
+@app.post("/api/runs/complete", dependencies=[Depends(verify_api_key)])
 async def complete_run(
     data: UploadFile = File(...),
     files: List[UploadFile] = File(...),
@@ -63,7 +74,7 @@ async def complete_run(
     data = json.loads(data.file.read())
     return tasks.complete_run(data, files)
 
-@app.get("/api/files/info/{path:path}")
+@app.get("/api/files/info/{path:path}", dependencies=[Depends(verify_api_key)])
 async def get_file(path: str):
     fs_path = safe_get_file_path(path)
     if fs_path == None:
@@ -80,7 +91,7 @@ async def get_file(path: str):
             "type": "file"
         }
 
-@app.get("/api/files/download/{path:path}")
+@app.get("/api/files/download/{path:path}", dependencies=[Depends(verify_api_key)])
 async def read_file(path: str):
     fs_path = safe_get_file_path(path)
     if fs_path == None:

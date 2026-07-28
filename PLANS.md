@@ -4,7 +4,7 @@
 - [x] file download
 - [x] priorities
 - [x] scheduled tasks
-- [ ] basic auth
+- [x] basic auth
 - [ ] a web ui
 
 ## for later
