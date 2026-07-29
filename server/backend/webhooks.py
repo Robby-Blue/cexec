@@ -13,7 +13,11 @@ def send_webhook(url, embed):
         ]
     }
     
-    requests.post(url, json=data)
+    r = requests.post(url, json=data)
+    
+    print(r.status_code)
+    if r.status_code != 200:
+        print(r.text)
     
 def send_file(url, data):
     if url == "":
@@ -55,9 +59,11 @@ def get_custom_embed(run, data):
     frontend_url = os.getenv("FRONTEND_URL")
     run_url = f"{frontend_url}/runs/{id}"
     
+    url = data.get("url", run_url)
+    
     fields = data["embeds"][0]["fields"]
     
-    return get_template(data["title"], run_url, name, fields)
+    return get_template(data["title"], url, name, fields)
  
 def get_template(title, url, author_name, fields):
     return {
