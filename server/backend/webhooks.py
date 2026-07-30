@@ -13,11 +13,14 @@ def send_webhook(url, embed):
         ]
     }
     
-    r = requests.post(url, json=data)
+    title = embed["title"]
+    print(f"> send webhook '{title}'")
+    r = requests.post(f"{url}?wait=true", json=data)
     
-    print(r.status_code)
+    print(f"< {r.status_code}")
     if r.status_code != 200:
-        print(r.text)
+        print(f"sent: {embed}")
+        print(f"recv: {r.text}")
     
 def send_file(url, data):
     if url == "":
@@ -39,7 +42,10 @@ def get_run_embed(run):
     
     
     frontend_url = os.getenv("FRONTEND_URL")
-    run_url = f"{frontend_url}/runs/{id}"
+    if frontend_url:
+        run_url = f"{frontend_url}/runs/{id}"
+    else:
+        run_url = None
 
     timespan = format_timespan(run["completed_at"], run["started_at"])
 
@@ -57,7 +63,10 @@ def get_custom_embed(run, data):
     id = run["task_id"]
     
     frontend_url = os.getenv("FRONTEND_URL")
-    run_url = f"{frontend_url}/runs/{id}"
+    if frontend_url:
+        run_url = f"{frontend_url}/runs/{id}"
+    else:
+        run_url = None
     
     url = data.get("url", run_url)
     
@@ -66,9 +75,8 @@ def get_custom_embed(run, data):
     return get_template(data["title"], url, name, fields)
  
 def get_template(title, url, author_name, fields):
-    return {
+    embed = {
         "title": title,
-        "url": url,
         "color": 5793266,
         "author": {
             "name": author_name
@@ -79,6 +87,11 @@ def get_template(title, url, author_name, fields):
         },
         "timestamp": datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     }
+    
+    if url is not None:
+        embed["url"] = url
+    
+    return embed
 
 def format_timespan(dt1, dt2):
     t1 = datetime.datetime.strptime(dt1, "%Y-%m-%d %H:%M:%S")
