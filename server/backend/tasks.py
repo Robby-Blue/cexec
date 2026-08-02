@@ -71,24 +71,25 @@ def complete_run(data, files):
     save_files(task_id, data["files_list"], files)
     
     run_data = get_run(task_id)
+    
+    log_url = os.getenv("DISCORD_LOG_WEBHOOK_URL")
+    webhooks.send_webhook(log_url, webhooks.get_run_embed(run_data))
+
     webhook_data = output.get("webhook", None)
     if webhook_data:
-        handle_webhooks(run_data, webhook_data, files)
+        handle_webhook(run_data, webhook_data, files)
 
     new_tasks_data = output.get("new_tasks", None)
     if new_tasks_data:
         handle_new_tasks(run_data, new_tasks_data)
     
-def handle_webhooks(run_data, webhook_data, files):
+def handle_webhook(run_data, webhook_data, files):
     exit_code = run_data["exit_code"]
     
     webhook_name = webhook_data.get("channel_name", "MAIN")
     
     main_url = os.getenv(f"DISCORD_{webhook_name}_WEBHOOK_URL")
-    log_url = os.getenv("DISCORD_LOG_WEBHOOK_URL")
-
-    webhooks.send_webhook(log_url, webhooks.get_run_embed(run_data))
-    
+  
     custom_webhook = webhooks.get_custom_embed(run_data, webhook_data)
     webhooks.send_webhook(main_url, custom_webhook)
     
