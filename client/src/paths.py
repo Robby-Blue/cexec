@@ -1,6 +1,7 @@
 import os
 
 DOCKER_ROOT = "/app"
+DOCKER_WORKSPACE = os.path.join(DOCKER_ROOT, "workspace")
 DOCKER_SCRIPT = os.path.join(DOCKER_ROOT, "script")
 DOCKER_OUTPUT = os.path.join(DOCKER_ROOT, "output")
 DOCKER_OUTPUT_RUN = os.path.join(DOCKER_OUTPUT, "run")

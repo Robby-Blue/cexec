@@ -12,20 +12,24 @@ def run_script_container(script_name):
     machine_scripts_path = os.getenv("SCRIPTS_PATH")
     machine_script_path = os.path.join(machine_scripts_path, script_name)
     
+    workspace_mount = docker.types.Mount(target=paths.DOCKER_WORKSPACE,
+        source=None, type="tmpfs")
     script_mount = docker.types.Mount(target=paths.DOCKER_SCRIPT,
-        source=machine_script_path, type="bind")
+        source=machine_script_path, type="bind", read_only=True)
     output_mount = docker.types.Mount(target=paths.DOCKER_OUTPUT,
         source=paths.MACHINE_OUTPUT, type="bind")
     input_mount = docker.types.Mount(target=paths.DOCKER_INPUT,
-        source=paths.MACHINE_INPUT, type="bind")
-    
+        source=paths.MACHINE_INPUT, type="bind", read_only=True)
+
     container = docker_client.containers.run(image_name,
         detach=True, tty=True,
-        mounts=[script_mount, output_mount, input_mount]
+        mounts=[workspace_mount, script_mount, output_mount, input_mount]
     )
     
-    res = container.exec_run(["sh", "entrypoint.sh"],
-        workdir=paths.DOCKER_SCRIPT)
+    entry_path = os.path.join(paths.DOCKER_SCRIPT, "entrypoint.sh")
+    
+    res = container.exec_run(["sh", entry_path],
+        workdir=paths.DOCKER_WORKSPACE)
 
     code = res.exit_code
     output = res.output.decode("UTF-8")
