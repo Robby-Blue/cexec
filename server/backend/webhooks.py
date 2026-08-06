@@ -26,7 +26,7 @@ def send_file(url, data):
     if url == "":
         return
 
-    requests.post(url, files={"file": data})
+    requests.post(url, files={"run.log": data})
     
 def get_run_embed(run):
     name = run["script"]

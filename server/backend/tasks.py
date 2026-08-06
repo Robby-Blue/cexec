@@ -81,19 +81,24 @@ def complete_run(data, files):
         handle_new_tasks(run_data, new_tasks_data)
     
 def handle_webhook(run_data, webhook_data, files):
-    log_url = os.getenv("DISCORD_LOG_WEBHOOK_URL")
-    webhooks.send_webhook(log_url, webhooks.get_run_embed(run_data))
-
     exit_code = run_data["exit_code"]
     
+    if exit_code == 0:
+        log_url = os.getenv("DISCORD_LOG_WEBHOOK_URL")
+    else:
+        log_url = os.getenv("DISCORD_MAIN_WEBHOOK_URL")
+    webhooks.send_webhook(log_url, webhooks.get_run_embed(run_data))
+
+    
     log = get_file_by_name("log", files)
-    log_str = log.file.read()
-    # we need to read this file again later, when saving
+    # weve already read this file earlier, when saving
     # so we need to seek back to pos 0, bc files can usually
     # only be read once
     log.file.seek(0)
+    log_str = log.file.read()
 
     if exit_code != 0:
+        print(log_str)
         webhooks.send_file(log_url, log_str)
         
     if webhook_data:
