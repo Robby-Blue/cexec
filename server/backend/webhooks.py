@@ -49,7 +49,7 @@ def get_run_embed(run):
 
     timespan = format_timespan(run["completed_at"], run["started_at"])
 
-    return get_template(status_string, run_url, name, [
+    return get_template(status_string, run_url, None, name, [
             {
                 "name": "runtime",
                 "value": timespan,
@@ -69,12 +69,14 @@ def get_custom_embed(run, data):
         run_url = None
     
     url = data.get("url", run_url)
+    embed = data["embeds"][0]
     
-    fields = data["embeds"][0]["fields"]
+    description = embed.get("description", None)
+    fields = embed["fields"]
     
-    return get_template(data["title"], url, name, fields)
+    return get_template(data["title"], url, description, name, fields)
  
-def get_template(title, url, author_name, fields):
+def get_template(title, url, description, author_name, fields):
     embed = {
         "title": title,
         "color": 5793266,
@@ -90,6 +92,8 @@ def get_template(title, url, author_name, fields):
     
     if url is not None:
         embed["url"] = url
+    if description is not None:
+        embed["description"] = description
     
     return embed
 
