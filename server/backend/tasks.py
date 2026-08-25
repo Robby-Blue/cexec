@@ -12,7 +12,7 @@ def get_tasks():
     
     return rows
 
-def create_task(script, data, priority_str=None, tag=None):
+def create_task(script, data, priority_str=None, tag=None, parent_id=None):
     if priority_str is None:
         priority = 0
     else:
@@ -28,7 +28,58 @@ def create_task(script, data, priority_str=None, tag=None):
     
     data_file_path = os.path.join(paths.UPCOMING_RUNS, data_file_name)
     with open(data_file_path, "w") as f:
+        data = normalize_data(data, parent_id)
         json.dump(data, f)
+
+def normalize_data(data, parent_id=None):
+    input_files = [
+        normalize_input_path(input_file, parent_id)
+        for input_file in data.get("input_files", [])
+        if normalize_input_path(input_file, parent_id)
+    ]
+    
+    return {
+        "input_files": input_files,
+        "output_files_map": data.get("output_files_map", []),
+    }
+
+def normalize_input_path(path, parent_id=None):
+    if isinstance(path, str):
+        return {
+            "server": path,
+            "client": path
+        }
+    if not isinstance(path, dict):
+        return False
+
+    server_path = normalize_input_server_path(path["server"], parent_id)
+    if not server_path:
+        return False
+
+    return {
+        "server": server_path,
+        "client": path["client"]
+    }
+    
+def normalize_input_server_path(path, parent_id=None):
+    if isinstance(path, str):
+        return path
+    if not isinstance(path, dict):
+        return False
+    
+    run_id = path.get("run_id")
+    if run_id == "parent":
+        if parent_id is None:
+            return False
+        run_id = parent_id
+
+    rest_of_path = path.get("path")
+    
+    if path["folder"] == "run":
+        return os.path.join("runs", str(run_id), rest_of_path)
+    if path["folder"] == "global":
+        return os.path.join("global", rest_of_path)
+    return False
 
 def get_next_task(allowed_scripts):
     scheduled_tasks.create_scheduled_tasks()
@@ -130,6 +181,8 @@ def save_files(task_id, files_list, files):
             f.write(file.file.read())
 
 def handle_new_tasks(run_data, new_tasks_data):
+    task_id = run_data["task_id"]
+    
     default_priority = run_data["priority"]
     default_priority_str = config.get_priority_str(default_priority)
     
@@ -139,7 +192,7 @@ def handle_new_tasks(run_data, new_tasks_data):
         priority_str = new_task_data.get("priority", default_priority_str)
         tag = new_task_data.get("tag", None)
 
-        create_task(script, data, priority_str, tag)
+        create_task(script, data, priority_str, tag, parent_id=task_id)
             
 def get_file_by_name(name, files):
     for file in files:

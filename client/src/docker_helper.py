@@ -13,7 +13,7 @@ def run_script_container(script_name):
     machine_script_path = os.path.join(machine_scripts_path, script_name)
     
     workspace_mount = docker.types.Mount(target=paths.DOCKER_WORKSPACE,
-        source=None, type="tmpfs")
+        source=None)
     script_mount = docker.types.Mount(target=paths.DOCKER_SCRIPT,
         source=machine_script_path, type="bind", read_only=True)
     output_mount = docker.types.Mount(target=paths.DOCKER_OUTPUT,

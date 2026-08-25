@@ -1,9 +1,11 @@
 import docker_helper as docker
 import paths
-import json
-import os
-import hashlib
 import api
+
+import hashlib
+import shutil
+import os
+import json
 
 def run_task(task):              
     id = task["id"]
@@ -12,45 +14,56 @@ def run_task(task):
     print(f"> start task #{id}")
     
     make_env()
-    download_files(task.get("files", []))
+    download_files(task.get("input_files", []))
     
     exit_code, log = docker.run_script_container(script)
     
     print(f"< task finished: {exit_code}")
     
-    complete_run(id, exit_code, log)
+    complete_run(task, exit_code, log)
 
 def download_files(file_paths):
-    for path in file_paths:
-        info = api.get(f"/files/info/{path}").json()
+    for paths_data in file_paths:
+        server_path = paths_data["server"]
+        client_path = paths_data["client"]
+        
+        info = api.get(f"/files/info/{server_path}").json()
 
         if info["type"] == "file":
-            download_file(path)
+            download_file(server_path, client_path)
         elif info["type"] == "folder":
             child_paths = []
             for child_name in info["children"]:
-                child_path = os.path.join(path, child_name)
-                child_paths.append(child_path)
+                child_server_path = os.path.join(server_path, child_name)
+                child_client_path = os.path.join(client_path, child_name)
+                child_paths.append({
+                    "server": child_server_path,
+                    "client": child_client_path
+                })
                 
             download_files(child_paths)
 
-def download_file(path):
-    fs_path = os.path.join(paths.RUNNER_INPUT, path)
-    fs_parent = os.path.dirname(fs_path)
-    os.makedirs(fs_parent, exist_ok=True)
-    
-    r = api.get(f"/files/download/{path}")
+def download_file(server_path, client_path):
+    r = api.get(f"/files/download/{server_path}")
     content = r.content
     
+    fs_path = os.path.join(paths.RUNNER_INPUT, client_path)
+    fs_parent = os.path.dirname(fs_path)
+    os.makedirs(fs_parent, exist_ok=True)
+
     with open(fs_path, "wb") as f:
         f.write(content)
 
-def complete_run(id, exit_code, log):
+def complete_run(task, exit_code, log):
+    id = task["id"]
+
     if os.path.exists(paths.RUNNER_OUTPUT_JSON):
         with open(paths.RUNNER_OUTPUT_JSON, "r") as f:
             output_data = json.load(f)
     else:
         output_data = {}
+
+    map_output_files(task.get("output_files_map", []))
 
     run_files_list, run_files = find_files("run", paths.RUNNER_OUTPUT_RUN)
     global_files_list, global_files = find_files("global", paths.RUNNER_OUTPUT_GLOBAL)
@@ -77,6 +90,16 @@ def complete_run(id, exit_code, log):
     return api.post(f"/runs/complete",
         files=files
     ).json()
+
+def map_output_files(maps):
+    for map in maps:
+        src = os.path.join(paths.RUNNER_OUTPUT, map["client"])
+        dest = os.path.join(paths.RUNNER_OUTPUT, map["server"])
+        
+        if not os.path.exists(src):
+            continue
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        shutil.copy(src, dest)
 
 def find_files(type, path):
     files_list = []
