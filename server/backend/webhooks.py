@@ -2,6 +2,10 @@ import datetime
 import requests
 import os
 
+COLOR_DEFAULT = 0x7289DA
+COLOR_SUCCESS = 0x3fff3f
+COLOR_ERROR = 0xff3f3f
+
 def send_webhook(url, embed):
     if url == "":
         return
@@ -35,8 +39,10 @@ def get_run_embed(run):
     
     if exit_code == 0:
         succeeded_string = "succeeded"
+        color = COLOR_SUCCESS
     else:
         succeeded_string = f"failed ({exit_code})"
+        color = COLOR_ERROR
     
     status_string = f"run #{id} {succeeded_string}"
     
@@ -49,7 +55,7 @@ def get_run_embed(run):
 
     timespan = format_timespan(run["completed_at"], run["started_at"])
 
-    return get_template(status_string, run_url, None, name, [
+    return get_template(color, status_string, run_url, None, name, [
             {
                 "name": "runtime",
                 "value": timespan,
@@ -74,12 +80,12 @@ def get_custom_embed(run, data):
     description = embed.get("description", None)
     fields = embed["fields"]
     
-    return get_template(data["title"], url, description, name, fields)
+    return get_template(COLOR_DEFAULT, data["title"], url, description, name, fields)
  
-def get_template(title, url, description, author_name, fields):
+def get_template(color, title, url, description, author_name, fields):
     embed = {
         "title": title,
-        "color": 5793266,
+        "color": color,
         "author": {
             "name": author_name
         },
