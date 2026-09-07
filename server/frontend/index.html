@@ -4,11 +4,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login</title>
+    <title>Authenticate</title>
+    <link rel="stylesheet" href="/layout.css">
+    <link rel="stylesheet" href="/styles.css">
 </head>
 
 <body>
-    Login
+    <div class="center-container floating-container">
+        <div>
+            <h1>Welcome</h1>
+            <a class="button" href="/dashboard">Go to Dashboard</a>
+        </div>
+        <div>
+            <h2>Authenticate</h2>
+            <form action="/api/authenticate" method="POST">
+                <label for="password">Auth Key</label><br>
+                <input name="auth_key" type="password"><br>
+                <input type="submit" value="Login">
+            </form>
+        </div>
+    </div>
 </body>
 
 </html>

@@ -1,8 +1,8 @@
-from typing import List
+from typing import List, Annotated
 
-from fastapi import FastAPI, UploadFile, File, Body, HTTPException, status, Depends
+from fastapi import FastAPI, Request, Form, UploadFile, File, Body, HTTPException, status, Depends
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import uvicorn
 import hmac
@@ -24,18 +24,28 @@ with open("version.json") as f:
     version_id = json.load(f)["version_id"]
 
 bearer_scheme = HTTPBearer(auto_error=False)
-def verify_api_key(creds: HTTPAuthorizationCredentials | None = Depends(bearer_scheme)):
+def verify_api_key(request: Request, creds: HTTPAuthorizationCredentials | None = Depends(bearer_scheme)):
     if AUTH_KEY == "":
         return None
-    if creds and hmac.compare_digest(creds.credentials, AUTH_KEY):
+    key = creds.credentials if creds else request.cookies.get("auth_key")
+
+    if key and hmac.compare_digest(key, AUTH_KEY):
         return None
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="wrong auth key :(")
 
-@app.get("/api/version")
+@app.get("/api/version", dependencies=[Depends(verify_api_key)])
 async def get_version():
     return {
         "version_id": version_id
     }
+
+@app.get("/api/runs", dependencies=[Depends(verify_api_key)])
+async def get_runs():
+    return tasks.get_runs()
+
+@app.get("/api/runs/{run_id}", dependencies=[Depends(verify_api_key)])
+async def get_runs_by_id(run_id):
+    return tasks.get_run_by_id(run_id)
 
 @app.get("/api/tasks", dependencies=[Depends(verify_api_key)])
 async def get_tasks():
@@ -82,6 +92,13 @@ async def get_file(path: str):
     
     if os.path.isdir(fs_path):
         children = os.listdir(fs_path)
+        children = [
+            {
+                "name": child_name,
+                "is_folder": os.path.isdir(os.path.join(fs_path, child_name))
+            }
+            for child_name in children
+        ]
         return {
             "type": "folder",
             "children": children
@@ -104,6 +121,19 @@ async def read_file(path: str):
     
     return FileResponse(fs_path)
 
+@app.post("/api/authenticate")
+async def authenticate(auth_key: Annotated[str, Form()]):
+    response = RedirectResponse(url="/dashboard", status_code=302)
+    response.set_cookie(
+        key="auth_key",
+        value=auth_key,
+        httponly=True,
+        samesite="lax",
+        max_age=60 * 60 * 24 * 365 * 10,
+        path="/",
+    )
+    return response
+
 def safe_get_file_path(path):
     fs_path = os.path.join(paths.FILES, path)
     if os.path.commonpath([paths.FILES, fs_path]) != paths.FILES:
@@ -111,6 +141,24 @@ def safe_get_file_path(path):
     if not os.path.exists(fs_path):
         return None
     return fs_path
+
+@app.get("/runs/{id}")
+async def serve_run_page(id: str):
+    # theres GOTTA be a better way to do this
+    if id == "runs.js":
+        return FileResponse("frontend/runs/runs.js")
+    if id == "runs.css":
+        return FileResponse("frontend/runs/runs.css")
+    return FileResponse("frontend/run/index.html")
+
+@app.get("/files/{path:path}")
+async def serve_files_page(path: str):
+    # theres GOTTA be a better way to do this
+    if path == "files.js":
+        return FileResponse("frontend/files/files.js")
+    if path == "files.css":
+        return FileResponse("frontend/files/files.css")
+    return FileResponse("frontend/files/index.html")
 
 app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
 

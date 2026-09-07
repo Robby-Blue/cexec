@@ -1,0 +1,109 @@
+html {
+    background-color: rgb(41, 41, 41);
+    margin: 0;
+    overflow: hidden;
+}
+
+.waybar {
+    padding: 16px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.waybar-island {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    >a.button,
+    >button,
+    >input {
+        box-shadow: 6px 6px 0 rgba(0, 0, 0, .70);
+    }
+}
+
+.floating-container {
+    outline: rgb(91, 206, 250) 1px solid;
+    background-color: #1f1f1f;
+    box-shadow: 6px 6px 0 rgba(0, 0, 0, .70);
+}
+
+h1,
+h2,
+h3 {
+    margin-top: 0;
+    margin-bottom: 16px;
+    text-box: ideographic-ink;
+}
+
+h1,
+h2,
+h3,
+p,
+label {
+    color: rgb(228, 228, 228);
+}
+
+* {
+    font-family: "Roboto", sans-serif;
+}
+
+a {
+    color: rgb(228, 228, 228);
+    text-decoration: none;
+}
+
+a.button,
+input[type=submit],
+button {
+    all: unset;
+    font-size: 13px;
+    display: inline-block;
+    padding: 4px;
+    background-color: rgb(91, 206, 250);
+    cursor: pointer;
+}
+
+input {
+    margin-bottom: 16px;
+    padding: 4px;
+    border: none;
+    outline: none;
+    border-radius: 5px;
+}
+
+button {
+    color: black;
+}
+
+::-webkit-scrollbar {
+    display: none;
+}
+
+body {
+    height: 100vh;
+    margin: 0;
+}
+
+.center-container {
+    overflow-y: scroll;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    padding: 16px;
+    margin: auto;
+    height: 70vh;
+    width: 70vw;
+}
+
+.gone {
+    visibility: collapse;
+}
+
+.hidden {
+    visibility: hidden;
+}

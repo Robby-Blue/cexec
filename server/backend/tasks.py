@@ -8,9 +8,24 @@ import os
 import json
 
 def get_tasks():
+    scheduled_tasks.create_scheduled_tasks()
     rows = db.query("SELECT * FROM tasks t LEFT JOIN runs r ON r.task_id = t.id;")
     
     return rows
+
+def get_runs():
+    rows = db.query("SELECT * FROM runs r LEFT JOIN tasks t ON t.id = r.task_id;")
+    
+    return rows
+
+def get_run_by_id(run_id):
+    rows = db.query("SELECT * FROM runs r LEFT JOIN tasks t ON t.id = r.task_id WHERE id=?;",
+        (run_id,))
+    
+    if len(rows) == 0:
+        return None
+    
+    return rows[0]
 
 def create_task(script, data, priority_str=None, tag=None, parent_id=None):
     if priority_str is None:

@@ -33,7 +33,8 @@ def download_files(file_paths):
             download_file(server_path, client_path)
         elif info["type"] == "folder":
             child_paths = []
-            for child_name in info["children"]:
+            for child in info["children"]:
+                child_name = child["name"]
                 child_server_path = os.path.join(server_path, child_name)
                 child_client_path = os.path.join(client_path, child_name)
                 child_paths.append({
