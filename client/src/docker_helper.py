@@ -20,10 +20,12 @@ def run_script_container(script_name):
         source=paths.MACHINE_OUTPUT, type="bind")
     input_mount = docker.types.Mount(target=paths.DOCKER_INPUT,
         source=paths.MACHINE_INPUT, type="bind", read_only=True)
+    vars_mount = docker.types.Mount(target=paths.DOCKER_VARS,
+        source=paths.MACHINE_VARS, type="bind", read_only=True)
 
     container = docker_client.containers.run(image_name,
         detach=True, tty=True,
-        mounts=[workspace_mount, script_mount, output_mount, input_mount]
+        mounts=[workspace_mount, script_mount, output_mount, input_mount, vars_mount]
     )
     
     entry_path = os.path.join(paths.DOCKER_SCRIPT, "entrypoint.sh")

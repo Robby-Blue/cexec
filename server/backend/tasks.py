@@ -56,6 +56,7 @@ def normalize_data(data, parent_id=None):
     return {
         "input_files": input_files,
         "output_files_map": data.get("output_files_map", []),
+        "vars": data.get("vars", {})
     }
 
 def normalize_input_path(path, parent_id=None):

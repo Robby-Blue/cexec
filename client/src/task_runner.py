@@ -16,11 +16,18 @@ def run_task(task):
     make_env()
     download_files(task.get("input_files", []))
     
+    print(task)
+    write_vars(task.get("vars", {}))
+    
     exit_code, log = docker.run_script_container(script)
     
     print(f"< task finished: {exit_code}")
     
     complete_run(task, exit_code, log)
+
+def write_vars(vars):
+    with open(paths.RUNNER_VARS, "w") as f:
+        json.dump(vars, f)
 
 def download_files(file_paths):
     for paths_data in file_paths:
