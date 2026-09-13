@@ -6,7 +6,7 @@ COLOR_DEFAULT = 0x7289DA
 COLOR_SUCCESS = 0x3fff3f
 COLOR_ERROR = 0xff3f3f
 
-def send_webhook(url, embed):
+def send_webhook(url, embed, file=None):
     if url == "":
         return
     
@@ -26,11 +26,19 @@ def send_webhook(url, embed):
         print(f"sent: {embed}")
         print(f"recv: {r.text}")
     
-def send_file(url, data):
+    if file:
+        send_file(url, file["name"], file["data"])
+    
+def send_file(url, file_name, file_data):
     if url == "":
         return
 
-    requests.post(url, files={"run.log": data})
+    print(f"> send file webhook '{file_name}'")
+    r = requests.post(f"{url}?wait=true", files={file_name: file_data})
+    
+    print(f"< {r.status_code}")
+    if r.status_code != 200:
+        print(f"recv: {r.text}")
     
 def get_run_embed(run):
     name = run["script"]

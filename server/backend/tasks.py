@@ -6,6 +6,7 @@ import config
 
 import os
 import json
+import hashlib
 
 def get_tasks():
     scheduled_tasks.create_scheduled_tasks()
@@ -166,7 +167,7 @@ def handle_webhook(run_data, webhook_data, files):
 
     if exit_code != 0:
         print(log_str)
-        webhooks.send_file(log_url, log_str)
+        webhooks.send_file(log_url, "run.log", log_str)
         
     if webhook_data:
         webhook_name = webhook_data.get("channel_name", "MAIN")
@@ -174,24 +175,47 @@ def handle_webhook(run_data, webhook_data, files):
         main_url = os.getenv(f"DISCORD_{webhook_name}_WEBHOOK_URL")
             
         custom_webhook = webhooks.get_custom_embed(run_data, webhook_data)
-        webhooks.send_webhook(main_url, custom_webhook)
+        included_file = get_included_file(webhook_data.get("include_file", None), files)
+        webhooks.send_webhook(main_url, custom_webhook, included_file)
+
+def get_included_file(file, files):
+    def read_by_name(file_path, files):
+        file = get_file_by_name(file_path, files)
+        file.file.seek(0)
+        file_data = file.file.read()
+        return file_data
     
+    if not file:
+        return None
+    if isinstance(file, str):
+        file_name = os.path.basename(file)
+        file_data = read_by_name(file, files)
+        return {
+            "name": file_name,
+            "data": file_data
+        }
+    if isinstance(file, dict):
+        file_data = read_by_name(file["path"], files)
+        return {
+            "name": file["name"],
+            "data": file_data
+        }
+
 def save_files(task_id, files_list, files):    
     for entry in files_list:
-        hash = entry["name"]
-        
         if entry["type"] == "run":
             path_prefix = os.path.join("runs", str(task_id))
         if entry["type"] == "global":
             path_prefix = "global"
+        path_relative_to_type = entry["path_relative_to_type"]
         path = entry["path"]
 
-        full_path = os.path.join(paths.FILES, path_prefix, path)
+        full_path = os.path.join(paths.FILES, path_prefix, path_relative_to_type)
         parent_path = os.path.dirname(full_path)
         
         os.makedirs(parent_path, exist_ok=True)
-        
-        file = get_file_by_name(hash, files)
+
+        file = get_file_by_name(path, files)
         
         with open(full_path, "wb") as f:
             f.write(file.file.read())

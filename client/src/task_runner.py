@@ -15,8 +15,6 @@ def run_task(task):
     
     make_env()
     download_files(task.get("input_files", []))
-    
-    print(task)
     write_vars(task.get("vars", {}))
     
     exit_code, log = docker.run_script_container(script)
@@ -82,7 +80,7 @@ def complete_run(task, exit_code, log):
     files_list.append({
         "type": "run",
         "path": "log",
-        "name": "log"
+        "path_relative_to_type": "log"
     })
     
     data = {
@@ -127,19 +125,18 @@ def find_files(type, path):
     return files_list, files
 
 def process_file(type, path):
-    path_md5 = hashlib.md5(path.encode()).hexdigest()
-    
-    rel = os.path.relpath(path, f"/app/workspace/output/{type}")
+    rel = os.path.relpath(path, f"/app/workspace/output/")
+    rel_type = os.path.relpath(path, f"/app/workspace/output/{type}")
 
     entry = {
         "type": type,
         "path": rel,
-        "name": path_md5
+        "path_relative_to_type": rel_type
     }
     
     with open(path, "rb") as f:
         data = f.read()
-    file = ("files", (path_md5, data))
+    file = ("files", (rel, data))
     
     return entry, file
 
