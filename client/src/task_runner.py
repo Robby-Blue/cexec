@@ -34,6 +34,9 @@ def download_files(file_paths):
         
         info = api.get(f"/files/info/{server_path}").json()
 
+        if not info:
+            continue
+
         if info["type"] == "file":
             download_file(server_path, client_path)
         elif info["type"] == "folder":
