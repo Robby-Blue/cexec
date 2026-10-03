@@ -11,7 +11,11 @@ def run_task(task):
     id = task["id"]
     script = task["script"]
     
-    print(f"> start task #{id}")
+    print(">>>")
+    print(f"Id:     #{id}")
+    print(f"Script: {script}")
+    print(f"Tag:    {task["tag"]}")
+    print(">>>")
     
     make_env()
     download_files(task.get("input_files", []))
@@ -19,7 +23,9 @@ def run_task(task):
     
     exit_code, log = docker.run_script_container(script)
     
-    print(f"< task finished: {exit_code}")
+    print("<<<")
+    print(f"Exit Code: {exit_code}")
+    print(f"Log:       {len(log.split("\n"))} lines")
     
     complete_run(task, exit_code, log)
 
@@ -79,6 +85,8 @@ def complete_run(task, exit_code, log):
 
     files_list = [*run_files_list, *global_files_list]
     files = [*run_files, *global_files]
+    
+    print(f"Files:     {len(files)}")
 
     files_list.append({
         "type": "run",

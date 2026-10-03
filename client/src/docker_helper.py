@@ -2,6 +2,7 @@ import os
 import json
 import docker
 import paths
+from datetime import datetime
 
 docker_client = docker.from_env()
 
@@ -30,13 +31,33 @@ def run_script_container(script_name):
     
     entry_path = os.path.join(paths.DOCKER_SCRIPT, "entrypoint.sh")
     
-    res = container.exec_run(["sh", entry_path],
-        workdir=paths.DOCKER_WORKSPACE)
+    api = container.client.api
+    exec_id = api.exec_create(
+        container.id,
+        ["sh", entry_path],
+        workdir=paths.DOCKER_WORKSPACE,
+    )["Id"]
 
-    code = res.exit_code
-    output = res.output.decode("UTF-8")
-    
+    lines = []
+    for line in iter_lines(api.exec_start(exec_id, stream=True)):
+        time = datetime.now().strftime("%H:%M:%S")
+        timed_line = f"[{time}] {line}"
+        print(f"{timed_line}")
+        lines.append(timed_line)
+
+    code = api.exec_inspect(exec_id)["ExitCode"]
+    output = "\n".join(lines)
     return code, output
+
+def iter_lines(stream):
+    buf = b""
+    for chunk in stream:
+        buf += chunk
+        while b"\n" in buf:
+            line, buf = buf.split(b"\n", 1)
+            yield line.decode(errors="replace")
+    if buf:
+        yield buf.decode(errors="replace")
 
 def get_config(script_name):
     script_path = os.path.join(paths.RUNNER_SCRIPTS, script_name, "config.json")
