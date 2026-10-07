@@ -170,7 +170,7 @@ def handle_webhook(run_data, webhook_data, files):
         webhooks.send_file(log_url, "run.log", log_str)
         
     if webhook_data:
-        webhook_name = webhook_data.get("channel_name", "MAIN")
+        webhook_name = webhook_data.get("channel", "MAIN")
                 
         main_url = os.getenv(f"DISCORD_{webhook_name}_WEBHOOK_URL")
             

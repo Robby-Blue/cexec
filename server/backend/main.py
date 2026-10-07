@@ -17,6 +17,7 @@ import db_helper as db
 db.setup()
 
 import tasks
+import files
 
 app = FastAPI()
 
@@ -84,11 +85,20 @@ async def complete_run(
     data = json.loads(data.file.read())
     return tasks.complete_run(data, files)
 
-@app.get("/api/files/info/{path:path}", dependencies=[Depends(verify_api_key)])
-async def get_file(path: str):
-    fs_path = safe_get_file_path(path)
+@app.get("/api/files/info/{path:path}")
+async def get_file_info(
+    path: str,
+    request: Request,
+    creds: HTTPAuthorizationCredentials | None = Depends(bearer_scheme)
+):
+    key = creds.credentials if creds else request.cookies.get("auth_key")
+    fs_path = files.safe_get_file_path(path)
     if fs_path == None:
         return
+    perms = files.get_permissions(key, fs_path)
+    
+    if "READ" not in perms:
+        return HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="wrong auth key :(")
     
     if os.path.isdir(fs_path):
         children = os.listdir(fs_path)
@@ -108,9 +118,22 @@ async def get_file(path: str):
             "type": "file"
         }
 
-@app.get("/api/files/download/{path:path}", dependencies=[Depends(verify_api_key)])
-async def read_file(path: str):
-    fs_path = safe_get_file_path(path)
+@app.get("/api/files/download/{path:path}")
+async def download_file(
+    path: str,
+    request: Request,
+    creds: HTTPAuthorizationCredentials | None = Depends(bearer_scheme)
+):
+    key = creds.credentials if creds else request.cookies.get("auth_key")
+    fs_path = files.safe_get_file_path(path)
+    if fs_path == None:
+        return
+    perms = files.get_permissions(key, fs_path)
+    
+    if "READ" not in perms:
+        return HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="wrong auth key :(")
+    
+    fs_path = files.safe_get_file_path(path)
     if fs_path == None:
         return
     
@@ -133,14 +156,6 @@ async def authenticate(auth_key: Annotated[str, Form()]):
         path="/",
     )
     return response
-
-def safe_get_file_path(path):
-    fs_path = os.path.join(paths.FILES, path)
-    if os.path.commonpath([paths.FILES, fs_path]) != paths.FILES:
-        return None
-    if not os.path.exists(fs_path):
-        return None
-    return fs_path
 
 @app.get("/runs/{id}")
 async def serve_run_page(id: str):
