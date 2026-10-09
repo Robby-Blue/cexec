@@ -144,6 +144,19 @@ async def download_file(
     
     return FileResponse(fs_path)
 
+@app.get("/api/files/backup_info")
+async def get_file_info(
+    request: Request,
+    creds: HTTPAuthorizationCredentials | None = Depends(bearer_scheme)
+):
+    key = creds.credentials if creds else request.cookies.get("auth_key")
+    perms = files.get_permissions(key, paths.FILES)
+    
+    if "READ" not in perms:
+        return HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="wrong auth key :(")
+    
+    return files.backup_read_folder()
+
 @app.post("/api/authenticate")
 async def authenticate(auth_key: Annotated[str, Form()]):
     response = RedirectResponse(url="/dashboard", status_code=302)

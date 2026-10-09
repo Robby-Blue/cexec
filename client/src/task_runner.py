@@ -122,8 +122,11 @@ def find_files(type, path):
     files_list = []
     files = []
     
-    for file in os.listdir(path):
-        file_path = os.path.join(path, file)
+    for file_name in os.listdir(path):
+        if file_name.startswith("."):
+            continue
+        
+        file_path = os.path.join(path, file_name)
         if os.path.isdir(file_path):
             new_list, new_files = find_files(type, file_path)
             files_list.extend(new_list)

@@ -1,7 +1,9 @@
 import task_runner
+import files
+import api
+
 import paths
 import os
-import api
 import json
 import time
 
@@ -20,12 +22,14 @@ def main():
         
         if not task["found"]:
             if auto_exit:
-                return
+                break
             else:
                 time.sleep(60 * 60)
                 continue
         
         task_runner.run_task(task)
+    
+    files.create_backup()
 
 def check_version(client_version_id):
     server_version_id = api.get("/version").json()["version_id"]

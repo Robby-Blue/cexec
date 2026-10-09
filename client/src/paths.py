@@ -17,6 +17,7 @@ RUNNER_OUTPUT_RUN = os.path.join(RUNNER_OUTPUT, "run")
 RUNNER_OUTPUT_GLOBAL = os.path.join(RUNNER_OUTPUT, "global")
 RUNNER_INPUT = os.path.join(RUNNER_ROOT, "input")
 RUNNER_VARS = os.path.join(RUNNER_ROOT, "vars.json")
+RUNNER_BACKUP = os.path.join(RUNNER_ROOT, "backup")
 
 MACHINE_ROOT = "/var/lib/cexec-client/"
 MACHINE_OUTPUT = os.path.join(MACHINE_ROOT, "output")
