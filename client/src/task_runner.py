@@ -2,7 +2,7 @@ import docker_helper as docker
 import paths
 import api
 
-import hashlib
+from files import format_byte_count
 import shutil
 import os
 import json
@@ -80,33 +80,113 @@ def complete_run(task, exit_code, log):
 
     map_output_files(task.get("output_files_map", []))
 
-    run_files_list, run_files = find_files("run", paths.RUNNER_OUTPUT_RUN)
-    global_files_list, global_files = find_files("global", paths.RUNNER_OUTPUT_GLOBAL)
+    run_files = find_files("run", paths.RUNNER_OUTPUT_RUN)
+    global_files = find_files("global", paths.RUNNER_OUTPUT_GLOBAL)
 
-    files_list = [*run_files_list, *global_files_list]
     files = [*run_files, *global_files]
     
     print(f"Files:     {len(files)}")
 
-    files_list.append({
-        "type": "run",
-        "path": "log",
-        "path_relative_to_type": "log"
+    files.append({
+        "metadata": {
+            "type": "run",
+            "path": "log",
+            "path_relative_to_type": "log",
+            "byte_count": len(log.encode("utf-8"))
+        },
+        "content": ("files", ("log", log, "text/plain"))
     })
+    byte_count = sum([file["metadata"]["byte_count"] for file in files])
+    print(f"Size:      {format_byte_count(byte_count)}")
+    
+    upload_files(id, files)
+    
+    complete_files = []
+    
+    included_file = get_included_file(output_data, files)
+    if included_file:
+        included_file_content, included_file_path, included_file_name = included_file
+        output_data["webhook"]["include_file"] = {
+            "path": included_file_path,
+            "name": included_file_name,
+        }
+        complete_files.append(("included_file", ("included", included_file_content, "application/octet-stream")))
+    
+    complete_files.append(("log_file", ("log", log, "text/plain")))
     
     data = {
         "id": str(id),
         "exit_code": exit_code,
         "output": output_data,
-        "files_list": files_list
+        "files_count": len(files)
     }
-
-    files.append(("data", ("data", json.dumps(data), "application/json")))
-    files.append(("files", ("log", log, "text/plain")))
-
+    complete_files.append(("data", ("data", json.dumps(data))))
+    
     return api.post(f"/runs/complete",
-        files=files
+        files=complete_files
     ).json()
+
+def get_included_file(output_data, files):
+    included_file = output_data.get("webhook", {}).get("include_file", {})
+    if not included_file:
+        return None
+    
+    if isinstance(included_file, str):
+        file_path = included_file
+        file_name = os.path.basename(file_path)
+    elif isinstance(included_file, dict):
+        file_path = included_file["path"]
+        file_name = included_file["name"]
+    else:
+        return None
+
+    file = [file for file in files
+        if file["metadata"]["path"] == file_path][0]
+    
+    return file["content"][1][1], file_path, file_name
+
+def upload_files(id, files):
+    parts = split_files(files)
+    
+    for part in parts:
+        data = {
+           "id": id,
+            "metadata_list": [file["metadata"] for file in part]
+        }
+        part_files = [file["content"] for file in part]
+        
+        files = [
+            ("data", ("data", json.dumps(data), "application/json")),
+            *part_files
+        ]
+        
+        api.post(f"/runs/upload_files",
+            files=files,
+        ).json()
+
+def split_files(files):
+    parts = []
+    part = []
+    
+    mb_size = 1024*1024
+    max_size = mb_size*1024
+    
+    part_size = 0
+    part_len = 0
+    for file in files:
+        part_len += 1
+        part_size += file["metadata"]["byte_count"]
+        
+        if part_size > max_size or part_len == 1000:
+            parts.append(part)
+            part = []
+
+        part.append(file)
+    
+    if part:
+        parts.append(part)
+
+    return parts
 
 def map_output_files(maps):
     for map in maps:
@@ -119,7 +199,6 @@ def map_output_files(maps):
         shutil.copy(src, dest)
 
 def find_files(type, path):
-    files_list = []
     files = []
     
     for file_name in os.listdir(path):
@@ -128,28 +207,31 @@ def find_files(type, path):
         
         file_path = os.path.join(path, file_name)
         if os.path.isdir(file_path):
-            new_list, new_files = find_files(type, file_path)
-            files_list.extend(new_list)
+            new_files = find_files(type, file_path)
             files.extend(new_files)
         else:
             entry, new_file = process_file(type, file_path)
-            files_list.append(entry)
-            files.append(new_file)
+            files.append({
+                "metadata": entry,
+                "content": new_file
+            })
     
-    return files_list, files
+    return files
 
 def process_file(type, path):
     rel = os.path.relpath(path, f"/app/workspace/output/")
     rel_type = os.path.relpath(path, f"/app/workspace/output/{type}")
-
-    entry = {
-        "type": type,
-        "path": rel,
-        "path_relative_to_type": rel_type
-    }
     
     with open(path, "rb") as f:
         data = f.read()
+        
+    entry = {
+        "type": type,
+        "path": rel,
+        "path_relative_to_type": rel_type,
+        "byte_count": len(data)
+    }
+    
     file = ("files", (rel, data))
     
     return entry, file

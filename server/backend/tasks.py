@@ -124,7 +124,7 @@ def start_run(task_id):
         INSERT INTO runs (task_id) VALUES (?);
         """, [task_id])
 
-def complete_run(data, files):
+def complete_run(data, log, included_file):
     task_id = data["id"]
     exit_code = data["exit_code"]
     output = data["output"]
@@ -136,19 +136,17 @@ def complete_run(data, files):
         WHERE task_id = ?;
         """, [exit_code, task_id])
     
-    save_files(task_id, data["files_list"], files)
-    
     run_data = get_run(task_id)
     
 
     webhook_data = output.get("webhook", None)
-    handle_webhook(run_data, webhook_data, files)
+    handle_webhook(run_data, webhook_data, log, included_file)
 
     new_tasks_data = output.get("new_tasks", None)
     if new_tasks_data:
         handle_new_tasks(run_data, new_tasks_data)
     
-def handle_webhook(run_data, webhook_data, files):
+def handle_webhook(run_data, webhook_data, log_str, included_file):
     exit_code = run_data["exit_code"]
     
     if exit_code == 0:
@@ -157,16 +155,7 @@ def handle_webhook(run_data, webhook_data, files):
         log_url = os.getenv("DISCORD_MAIN_WEBHOOK_URL")
     webhooks.send_webhook(log_url, webhooks.get_run_embed(run_data))
 
-    
-    log = get_file_by_name("log", files)
-    # weve already read this file earlier, when saving
-    # so we need to seek back to pos 0, bc files can usually
-    # only be read once
-    log.file.seek(0)
-    log_str = log.file.read()
-
     if exit_code != 0:
-        print(log_str)
         webhooks.send_file(log_url, "run.log", log_str)
         
     if webhook_data:
@@ -175,31 +164,14 @@ def handle_webhook(run_data, webhook_data, files):
         main_url = os.getenv(f"DISCORD_{webhook_name}_WEBHOOK_URL")
             
         custom_webhook = webhooks.get_custom_embed(run_data, webhook_data)
-        included_file = get_included_file(webhook_data.get("include_file", None), files)
+        
+        if included_file:
+            included_file = {
+                "name": webhook_data["include_file"]["name"],
+                "data": included_file.file.read()
+            }
+        
         webhooks.send_webhook(main_url, custom_webhook, included_file)
-
-def get_included_file(file, files):
-    def read_by_name(file_path, files):
-        file = get_file_by_name(file_path, files)
-        file.file.seek(0)
-        file_data = file.file.read()
-        return file_data
-    
-    if not file:
-        return None
-    if isinstance(file, str):
-        file_name = os.path.basename(file)
-        file_data = read_by_name(file, files)
-        return {
-            "name": file_name,
-            "data": file_data
-        }
-    if isinstance(file, dict):
-        file_data = read_by_name(file["path"], files)
-        return {
-            "name": file["name"],
-            "data": file_data
-        }
 
 def save_files(task_id, files_list, files):    
     for entry in files_list:

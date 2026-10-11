@@ -77,13 +77,23 @@ async def create_task(
 ):
     return tasks.create_task(script, data, priority)
 
-@app.post("/api/runs/complete", dependencies=[Depends(verify_api_key)])
-async def complete_run(
+@app.post("/api/runs/upload_files", dependencies=[Depends(verify_api_key)])
+async def upload_files(
     data: UploadFile = File(...),
     files: List[UploadFile] = File(...),
 ):
     data = json.loads(data.file.read())
-    return tasks.complete_run(data, files)
+    return tasks.save_files(data["id"], data["metadata_list"], files)
+
+@app.post("/api/runs/complete", dependencies=[Depends(verify_api_key)])
+async def complete_run(
+    data: UploadFile = File(...),
+    log_file: UploadFile = File(...),
+    included_file: UploadFile | None = None,
+):
+    data = json.loads(data.file.read())
+    log = log_file.file.read()
+    return tasks.complete_run(data, log, included_file)
 
 @app.get("/api/files/info/{path:path}")
 async def get_file_info(
@@ -145,7 +155,7 @@ async def download_file(
     return FileResponse(fs_path)
 
 @app.get("/api/files/backup_info")
-async def get_file_info(
+async def get_backup_file_info(
     request: Request,
     creds: HTTPAuthorizationCredentials | None = Depends(bearer_scheme)
 ):
