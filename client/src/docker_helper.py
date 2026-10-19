@@ -47,6 +47,9 @@ def run_script_container(script_name):
 
     code = api.exec_inspect(exec_id)["ExitCode"]
     output = "\n".join(lines)
+    
+    container.remove(force=True, v=True)
+    
     return code, output
 
 def iter_lines(stream):
