@@ -5,7 +5,6 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import uvicorn
-import hmac
 import json
 import os
 
@@ -16,6 +15,7 @@ import paths
 import db_helper as db
 db.setup()
 
+import config
 import tasks
 import files
 
@@ -25,34 +25,37 @@ with open("version.json") as f:
     version_id = json.load(f)["version_id"]
 
 bearer_scheme = HTTPBearer(auto_error=False)
-def verify_api_key(request: Request, creds: HTTPAuthorizationCredentials | None = Depends(bearer_scheme)):
-    if AUTH_KEY == "":
-        return None
-    key = creds.credentials if creds else request.cookies.get("auth_key")
+def require_perms(req_perm):
+    def f(request: Request, creds: HTTPAuthorizationCredentials | None = Depends(bearer_scheme)):
+        key = creds.credentials if creds else request.cookies.get("auth_key")
 
-    if key and hmac.compare_digest(key, AUTH_KEY):
-        return None
-    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="wrong auth key :(")
+        if not key:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="no auth key :(")
 
-@app.get("/api/version", dependencies=[Depends(verify_api_key)])
+        if config.has_perms_for_key(req_perm, key):
+            return None
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="wrong auth key :(")
+    return f
+
+@app.get("/api/version", dependencies=[Depends(require_perms("READ_API"))])
 async def get_version():
     return {
         "version_id": version_id
     }
 
-@app.get("/api/runs", dependencies=[Depends(verify_api_key)])
+@app.get("/api/runs", dependencies=[Depends(require_perms("READ_API"))])
 async def get_runs():
     return tasks.get_runs()
 
-@app.get("/api/runs/{run_id}", dependencies=[Depends(verify_api_key)])
+@app.get("/api/runs/{run_id}", dependencies=[Depends(require_perms("READ_API"))])
 async def get_runs_by_id(run_id):
     return tasks.get_run_by_id(run_id)
 
-@app.get("/api/tasks", dependencies=[Depends(verify_api_key)])
+@app.get("/api/tasks", dependencies=[Depends(require_perms("READ_API"))])
 async def get_tasks():
     return tasks.get_tasks()
 
-@app.post("/api/tasks/next", dependencies=[Depends(verify_api_key)])
+@app.post("/api/tasks/next", dependencies=[Depends(require_perms("RUN_TASK"))])
 async def get_next_task(
     allowed_scripts: list[str] = Body(..., embed=True)
 ):    
@@ -69,7 +72,7 @@ async def get_next_task(
     
     return found_task
 
-@app.post("/api/tasks/create", dependencies=[Depends(verify_api_key)])
+@app.post("/api/tasks/create", dependencies=[Depends(require_perms("WRITE_API"))])
 async def create_task(
     script: str = Body(...),
     priority: str = Body(...),
@@ -77,7 +80,7 @@ async def create_task(
 ):
     return tasks.create_task(script, data, priority)
 
-@app.post("/api/runs/upload_files", dependencies=[Depends(verify_api_key)])
+@app.post("/api/runs/upload_files", dependencies=[Depends(require_perms("RUN_TASK"))])
 async def upload_files(
     data: UploadFile = File(...),
     files: List[UploadFile] = File(...),
@@ -85,7 +88,7 @@ async def upload_files(
     data = json.loads(data.file.read())
     return tasks.save_files(data["id"], data["metadata_list"], files)
 
-@app.post("/api/runs/complete", dependencies=[Depends(verify_api_key)])
+@app.post("/api/runs/complete", dependencies=[Depends(require_perms("RUN_TASK"))])
 async def complete_run(
     data: UploadFile = File(...),
     log_file: UploadFile = File(...),
@@ -107,7 +110,7 @@ async def get_file_info(
         return
     perms = files.get_permissions(key, fs_path)
     
-    if "READ" not in perms:
+    if "READ_FS" not in perms:
         return HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="wrong auth key :(")
     
     if os.path.isdir(fs_path):
@@ -140,12 +143,10 @@ async def download_file(
         return
     perms = files.get_permissions(key, fs_path)
     
-    if "READ" not in perms:
+    if "READ_FS" not in perms:
         return HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="wrong auth key :(")
     
-    fs_path = files.safe_get_file_path(path)
-    if fs_path == None:
-        return
+    print(fs_path)
     
     if not os.path.exists(fs_path):
         return
@@ -162,7 +163,7 @@ async def get_backup_file_info(
     key = creds.credentials if creds else request.cookies.get("auth_key")
     perms = files.get_permissions(key, paths.FILES)
     
-    if "READ" not in perms:
+    if "READ_FS" not in perms:
         return HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="wrong auth key :(")
     
     return files.backup_read_folder()

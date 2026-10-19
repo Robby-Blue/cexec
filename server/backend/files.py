@@ -1,5 +1,4 @@
 import os
-import hmac
 import paths
 import config
 
@@ -14,19 +13,19 @@ def safe_get_file_path(path):
 
 def get_permissions(key, req_path):
     req_path = safe_get_file_path(req_path)
-    perms = []
+    path_perms = []
     
-    for file_perm in config.file_perms:
-        if not hmac.compare_digest(key, file_perm["auth_key"]):
+    for perm in config.get_perms_for_key(key):
+        if "path" not in perm:
             continue
-        
-        file_path = file_perm["path"]
+
+        file_path = perm["path"]
         if os.path.commonpath([req_path, file_path]) != file_path:
             continue
         
-        perms += file_perm["permissions"]
+        path_perms.append(perm["type"])
     
-    return perms
+    return path_perms
 
 def backup_read_folder(api_path=""):
     files = []

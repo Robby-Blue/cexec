@@ -9,6 +9,18 @@
             }
         }
     ],
+    "auth_keys": [
+        {
+            "name": "AUTH_KEY",
+            "permissions": [
+                "READ_API",
+                {
+                    "type": "READ",
+                    "path": ""
+                }
+            ]
+        }
+    ],
     "priorities": [
         "low",
         "high"
