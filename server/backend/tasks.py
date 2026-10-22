@@ -6,52 +6,51 @@ import config
 
 import os
 import json
-import hashlib
 
 def get_tasks():
     scheduled_tasks.create_scheduled_tasks()
-    rows = db.query("SELECT * FROM tasks t LEFT JOIN runs r ON r.task_id = t.id;")
+    rows = db.query("SELECT * FROM tasks;")
     
     return rows
 
 def get_runs():
-    rows = db.query("SELECT * FROM runs r LEFT JOIN tasks t ON t.id = r.task_id;")
+    rows = db.query("SELECT r.*, t.script, t.priority, t.tag, t.created_at FROM runs r LEFT JOIN tasks t ON t.uuid = r.task_uuid;")
     
     return rows
 
-def get_run_by_id(run_id):
-    rows = db.query("SELECT * FROM runs r LEFT JOIN tasks t ON t.id = r.task_id WHERE id=?;",
-        (run_id,))
+def get_run_by_index(run_index):
+    rows = db.query("SELECT * FROM runs r LEFT JOIN tasks t ON t.uuid = r.task_uuid WHERE idx=?;",
+        (run_index,))
     
     if len(rows) == 0:
         return None
     
     return rows[0]
 
-def create_task(script, data, priority_str=None, tag=None, parent_id=None):
+def create_task(script, data, priority_str=None, tag=None, parent_run_index=None):
     if priority_str is None:
         priority = 0
     else:
         priority = config.priority_from_str(priority_str)
 
+    uuid = db.get_uuid()
     db.exec("""
-        INSERT INTO tasks (script, priority, tag)
-        VALUES (?, ?, ?);
-        """, [script, priority, tag])
+        INSERT INTO tasks (uuid, script, priority, tag)
+        VALUES (?, ?, ?, ?);
+        """, [uuid, script, priority, tag])
+
+    data_file_name = f"{uuid}.json" 
     
-    id = db.last_row_id()
-    data_file_name = f"{id}.json" 
-    
-    data_file_path = os.path.join(paths.UPCOMING_RUNS, data_file_name)
+    data_file_path = os.path.join(paths.TASK_DEFS, data_file_name)
     with open(data_file_path, "w") as f:
-        data = normalize_data(data, parent_id)
+        data = normalize_data(data, parent_run_index)
         json.dump(data, f)
 
-def normalize_data(data, parent_id=None):
+def normalize_data(data, parent_uuid=None):
     input_files = [
-        normalize_input_path(input_file, parent_id)
+        normalize_input_path(input_file, parent_uuid)
         for input_file in data.get("input_files", [])
-        if normalize_input_path(input_file, parent_id)
+        if normalize_input_path(input_file, parent_uuid)
     ]
     
     return {
@@ -60,7 +59,7 @@ def normalize_data(data, parent_id=None):
         "vars": data.get("vars", {})
     }
 
-def normalize_input_path(path, parent_id=None):
+def normalize_input_path(path, parent_run_index=None):
     if isinstance(path, str):
         return {
             "server": path,
@@ -69,7 +68,7 @@ def normalize_input_path(path, parent_id=None):
     if not isinstance(path, dict):
         return False
 
-    server_path = normalize_input_server_path(path["server"], parent_id)
+    server_path = normalize_input_server_path(path["server"], parent_run_index)
     if not server_path:
         return False
 
@@ -78,7 +77,7 @@ def normalize_input_path(path, parent_id=None):
         "client": path["client"]
     }
     
-def normalize_input_server_path(path, parent_id=None):
+def normalize_input_server_path(path, parent_run_index=None):
     if isinstance(path, str):
         return path
     if not isinstance(path, dict):
@@ -86,9 +85,9 @@ def normalize_input_server_path(path, parent_id=None):
     
     run_id = path.get("run_id")
     if run_id == "parent":
-        if parent_id is None:
+        if parent_run_index is None:
             return False
-        run_id = parent_id
+        run_id = parent_run_index
 
     rest_of_path = path.get("path")
     
@@ -106,7 +105,7 @@ def get_next_task(allowed_scripts):
     
     rows = db.query(f"""
         SELECT t.* FROM tasks t
-        LEFT JOIN runs r ON r.task_id = t.id
+        LEFT JOIN runs r ON r.task_uuid = t.uuid
         WHERE r.started_at IS NULL AND
         script IN ({interpolations})
         ORDER BY priority DESC;
@@ -119,13 +118,17 @@ def get_next_task(allowed_scripts):
 
     return row
 
-def start_run(task_id):
+def create_run(task_uuid):
+    uuid = db.get_uuid()
+    count = db.query("SELECT COUNT(*) FROM runs;")[0]["COUNT(*)"]+1
+    
     db.exec("""
-        INSERT INTO runs (task_id) VALUES (?);
-        """, [task_id])
+        INSERT INTO runs (uuid, task_uuid, idx) VALUES (?, ?, ?);
+        """, [uuid, task_uuid, count])
+    return count, uuid
 
 def complete_run(data, log, included_file):
-    task_id = data["id"]
+    run_uuid = data["uuid"]
     exit_code = data["exit_code"]
     output = data["output"]
     
@@ -133,11 +136,10 @@ def complete_run(data, log, included_file):
         UPDATE runs SET
         completed_at = CURRENT_TIMESTAMP,
         exit_code = ?
-        WHERE task_id = ?;
-        """, [exit_code, task_id])
+        WHERE uuid = ?;
+        """, [exit_code, run_uuid])
     
-    run_data = get_run(task_id)
-    
+    run_data = get_run_by_uuid(run_uuid)
 
     webhook_data = output.get("webhook", None)
     handle_webhook(run_data, webhook_data, log, included_file)
@@ -173,10 +175,10 @@ def handle_webhook(run_data, webhook_data, log_str, included_file):
         
         webhooks.send_webhook(main_url, custom_webhook, included_file)
 
-def save_files(task_id, files_list, files):    
+def save_files(run_idx, files_list, files):    
     for entry in files_list:
         if entry["type"] == "run":
-            path_prefix = os.path.join("runs", str(task_id))
+            path_prefix = os.path.join("runs", str(run_idx))
         if entry["type"] == "global":
             path_prefix = "global"
         path_relative_to_type = entry["path_relative_to_type"]
@@ -193,7 +195,7 @@ def save_files(task_id, files_list, files):
             f.write(file.file.read())
 
 def handle_new_tasks(run_data, new_tasks_data):
-    task_id = run_data["task_id"]
+    index = run_data["idx"]
     
     default_priority = run_data["priority"]
     default_priority_str = config.get_priority_str(default_priority)
@@ -204,7 +206,7 @@ def handle_new_tasks(run_data, new_tasks_data):
         priority_str = new_task_data.get("priority", default_priority_str)
         tag = new_task_data.get("tag", None)
 
-        create_task(script, data, priority_str, tag, parent_id=task_id)
+        create_task(script, data, priority_str, tag, parent_run_index=index)
             
 def get_file_by_name(name, files):
     for file in files:
@@ -212,12 +214,12 @@ def get_file_by_name(name, files):
             return file
     return None
 
-def get_run(task_id):
+def get_run_by_uuid(uuid):
     rows = db.query("""
         SELECT * FROM tasks t
-        LEFT JOIN runs r ON r.task_id = t.id
-        WHERE r.task_id = ?;
-        """, [task_id])
+        LEFT JOIN runs r ON r.task_uuid = t.uuid
+        WHERE r.uuid = ?;
+        """, [uuid])
     if len(rows) == 0:
         return None
     return rows[0]

@@ -1,4 +1,4 @@
-import task_runner
+import runner
 import files
 import api
 
@@ -18,7 +18,7 @@ def main():
     
     while True:
         check_version(version_id)
-        task = get_next_task()
+        task = get_next_run()
         
         if not task["found"]:
             if auto_exit:
@@ -27,7 +27,7 @@ def main():
                 time.sleep(60 * 60)
                 continue
         
-        task_runner.run_task(task)
+        runner.execute_run(task)
     
     files.create_backup()
 
@@ -39,10 +39,10 @@ def check_version(client_version_id):
         print(f"{client_version_id=}, {server_version_id=}")
         exit(1)
     
-def get_next_task():
+def get_next_run():
     allowed_scripts = os.listdir(paths.RUNNER_SCRIPTS)
         
-    return api.post("/tasks/next", json={
+    return api.post("/runs/next", json={
         "allowed_scripts": allowed_scripts
     }).json()
 

@@ -8,8 +8,6 @@ import uvicorn
 import json
 import os
 
-AUTH_KEY = os.environ["AUTH_KEY"]
-
 import paths
 
 import db_helper as db
@@ -47,30 +45,13 @@ async def get_version():
 async def get_runs():
     return tasks.get_runs()
 
-@app.get("/api/runs/{run_id}", dependencies=[Depends(require_perms("READ_API"))])
-async def get_runs_by_id(run_id):
-    return tasks.get_run_by_id(run_id)
+@app.get("/api/runs/{run_index}", dependencies=[Depends(require_perms("READ_API"))])
+async def get_runs_by_index(run_index):
+    return tasks.get_run_by_index(run_index)
 
 @app.get("/api/tasks", dependencies=[Depends(require_perms("READ_API"))])
 async def get_tasks():
     return tasks.get_tasks()
-
-@app.post("/api/tasks/next", dependencies=[Depends(require_perms("RUN_TASK"))])
-async def get_next_task(
-    allowed_scripts: list[str] = Body(..., embed=True)
-):    
-    found_task = tasks.get_next_task(allowed_scripts)
-    if not found_task:
-        return {"found": False}
-    
-    id = found_task["id"]
-    tasks.start_run(id)
-    with open(os.path.join(paths.UPCOMING_RUNS, f"{id}.json"), "r") as f:
-        data = json.load(f)
-    found_task = {**found_task, **data}
-    found_task["found"] = True
-    
-    return found_task
 
 @app.post("/api/tasks/create", dependencies=[Depends(require_perms("WRITE_API"))])
 async def create_task(
@@ -80,13 +61,32 @@ async def create_task(
 ):
     return tasks.create_task(script, data, priority)
 
+@app.post("/api/runs/next", dependencies=[Depends(require_perms("RUN_TASK"))])
+async def get_next_run(
+    allowed_scripts: list[str] = Body(..., embed=True)
+):    
+    due_task = tasks.get_next_task(allowed_scripts)
+    if not due_task:
+        return {"found": False}
+    
+    uuid = due_task["uuid"]
+    index, run_uuid = tasks.create_run(uuid)
+    due_task["index"] = index
+    due_task["run_uuid"] = run_uuid
+    with open(os.path.join(paths.TASK_DEFS, f"{uuid}.json"), "r") as f:
+        data = json.load(f)
+    due_task = {**due_task, **data}
+    due_task["found"] = True
+    
+    return due_task
+
 @app.post("/api/runs/upload_files", dependencies=[Depends(require_perms("RUN_TASK"))])
 async def upload_files(
     data: UploadFile = File(...),
     files: List[UploadFile] = File(...),
 ):
     data = json.loads(data.file.read())
-    return tasks.save_files(data["id"], data["metadata_list"], files)
+    return tasks.save_files(data["index"], data["metadata_list"], files)
 
 @app.post("/api/runs/complete", dependencies=[Depends(require_perms("RUN_TASK"))])
 async def complete_run(
@@ -181,12 +181,12 @@ async def authenticate(auth_key: Annotated[str, Form()]):
     )
     return response
 
-@app.get("/runs/{id}")
-async def serve_run_page(id: str):
+@app.get("/runs/{index}")
+async def serve_run_page(index: str):
     # theres GOTTA be a better way to do this
-    if id == "runs.js":
+    if index == "runs.js":
         return FileResponse("frontend/runs/runs.js")
-    if id == "runs.css":
+    if index == "runs.css":
         return FileResponse("frontend/runs/runs.css")
     return FileResponse("frontend/run/index.html")
 

@@ -21,7 +21,7 @@ function showTasks(tasks) {
         container.classList.add("task-container")
 
         let headingElement = document.createElement("h3")
-        headingElement.textContent = `#${task.id} - ${task.script}`
+        headingElement.textContent = `${task.script}`
         container.append(headingElement)
 
         tasksContainer.appendChild(container)

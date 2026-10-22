@@ -23,7 +23,7 @@ def should_create_scheduled_task(scheduled_task):
     
     rows = db.query("""
         SELECT * FROM tasks t
-        LEFT JOIN runs r ON r.task_id = t.id
+        LEFT JOIN runs r ON r.task_uuid = t.uuid
         WHERE t.tag = ?;
         """, [tag])
     

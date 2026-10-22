@@ -42,7 +42,7 @@ def send_file(url, file_name, file_data):
     
 def get_run_embed(run):
     name = run["script"]
-    id = run["task_id"]
+    idx = run["idx"]
     exit_code = run["exit_code"]
     
     if exit_code == 0:
@@ -52,12 +52,12 @@ def get_run_embed(run):
         succeeded_string = f"failed ({exit_code})"
         color = COLOR_ERROR
     
-    status_string = f"run #{id} {succeeded_string}"
+    status_string = f"run #{idx} {succeeded_string}"
     
     
     frontend_url = os.getenv("FRONTEND_URL")
     if frontend_url:
-        run_url = f"{frontend_url}/runs/{id}"
+        run_url = f"{frontend_url}/runs/{idx}"
     else:
         run_url = None
 
@@ -74,11 +74,11 @@ def get_run_embed(run):
     
 def get_custom_embed(run, data):
     name = run["script"]
-    id = run["task_id"]
+    idx = run["idx"]
     
     frontend_url = os.getenv("FRONTEND_URL")
     if frontend_url:
-        run_url = f"{frontend_url}/runs/{id}"
+        run_url = f"{frontend_url}/runs/{idx}"
     else:
         run_url = None
     

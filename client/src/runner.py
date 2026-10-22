@@ -7,19 +7,21 @@ import shutil
 import os
 import json
 
-def run_task(task):              
-    id = task["id"]
-    script = task["script"]
+def execute_run(run):
+    uuid = run["uuid"]
+    index = run["index"]
+    script = run["script"]
     
     print(">>>")
-    print(f"Id:     #{id}")
+    print(f"Task:   {uuid}")
+    print(f"Run:    #{index}")
     print(f"Script: {script}")
-    print(f"Tag:    {task["tag"]}")
+    print(f"Tag:    {run["tag"]}")
     print(">>>")
     
     make_env()
-    download_files(task.get("input_files", []))
-    write_vars(task.get("vars", {}))
+    download_files(run.get("input_files", []))
+    write_vars(run.get("vars", {}))
     
     exit_code, log = docker.run_script_container(script)
     
@@ -27,7 +29,7 @@ def run_task(task):
     print(f"Exit Code: {exit_code}")
     print(f"Log:       {len(log.split("\n"))} lines")
     
-    complete_run(task, exit_code, log)
+    complete_run(run, exit_code, log)
 
 def write_vars(vars):
     with open(paths.RUNNER_VARS, "w") as f:
@@ -69,8 +71,9 @@ def download_file(server_path, client_path):
     with open(fs_path, "wb") as f:
         f.write(content)
 
-def complete_run(task, exit_code, log):
-    id = task["id"]
+def complete_run(run, exit_code, log):
+    uuid = run["run_uuid"]
+    index = run["index"]
 
     if os.path.exists(paths.RUNNER_OUTPUT_JSON):
         with open(paths.RUNNER_OUTPUT_JSON, "r") as f:
@@ -78,7 +81,7 @@ def complete_run(task, exit_code, log):
     else:
         output_data = {}
 
-    map_output_files(task.get("output_files_map", []))
+    map_output_files(run.get("output_files_map", []))
 
     run_files = find_files("run", paths.RUNNER_OUTPUT_RUN)
     global_files = find_files("global", paths.RUNNER_OUTPUT_GLOBAL)
@@ -99,7 +102,7 @@ def complete_run(task, exit_code, log):
     byte_count = sum([file["metadata"]["byte_count"] for file in files])
     print(f"Size:      {format_byte_count(byte_count)}")
     
-    upload_files(id, files)
+    upload_files(index, files)
     
     complete_files = []
     
@@ -115,7 +118,7 @@ def complete_run(task, exit_code, log):
     complete_files.append(("log_file", ("log", log, "text/plain")))
     
     data = {
-        "id": str(id),
+        "uuid": str(uuid),
         "exit_code": exit_code,
         "output": output_data,
         "files_count": len(files)
@@ -145,12 +148,12 @@ def get_included_file(output_data, files):
     
     return file["content"][1][1], file_path, file_name
 
-def upload_files(id, files):
+def upload_files(index, files):
     parts = split_files(files)
     
     for part in parts:
         data = {
-           "id": id,
+            "index": index,
             "metadata_list": [file["metadata"] for file in part]
         }
         part_files = [file["content"] for file in part]

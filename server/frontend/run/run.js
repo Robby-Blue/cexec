@@ -5,16 +5,16 @@ function elementSetText(element_id, text) {
     element.textContent = text
 }
 
-let id = window.location.pathname.slice("/runs/".length)
+let index = window.location.pathname.slice("/runs/".length)
 
 let filesButton = document.getElementById("files-button")
-filesButton.href = `/files/runs/${id}`
+filesButton.href = `/files/runs/${index}`
 
-elementSetText("heading", `Run #${id}`)
-document.title = `Run #${id}`
+elementSetText("heading", `Run #${index}`)
+document.title = `Run #${index}`
 
 async function getRunData() {
-    let r = await fetch(`/api/runs/${id}`)
+    let r = await fetch(`/api/runs/${index}`)
     let data = await r.json()
 
     elementSetText("script-cell", data.script)

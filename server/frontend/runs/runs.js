@@ -21,8 +21,8 @@ function showRuns(runs) {
 
         let headingElement = document.createElement("h3")
         let nameElement = document.createElement("a")
-        nameElement.href = `/runs/${run.id}`
-        nameElement.textContent = `#${run.id} - ${run.script}`
+        nameElement.href = `/runs/${run.idx}`
+        nameElement.textContent = `#${run.idx} - ${run.script}`
         headingElement.append(nameElement)
         container.append(headingElement)
 
